@@ -20,11 +20,13 @@ import com.groocraft.havelock.annotation.EnableHavelock;
 import com.groocraft.havelock.mock.AllMappingsController;
 import com.groocraft.havelock.mock.BasePathController;
 import com.groocraft.havelock.mock.ControllerWithPublicEndpoints;
+import com.groocraft.havelock.mock.ExtendedMappingController;
 import com.groocraft.havelock.mock.MappingController;
 import com.groocraft.havelock.mock.MappingPublicController;
 import com.groocraft.havelock.mock.MatcherController;
 import com.groocraft.havelock.mock.MultipleController;
 import com.groocraft.havelock.mock.NoMappingController;
+import com.groocraft.havelock.mock.NonPublicMappingController;
 import com.groocraft.havelock.mock.PrivateController;
 import com.groocraft.havelock.mock.PublicController;
 import org.junit.jupiter.api.Test;
@@ -514,7 +516,9 @@ class HavelockWebSecurityTest {
                         Arrays.asList("/base/get/test", "/base/put/test", "/base/post/test", "/base/delete/test",
                                 "/base/get2/test", "/base/put2/test", "/base/post2/test", "/base/delete2/test",
                                 "/base2/get/test", "/base2/put/test", "/base2/post/test", "/base2/delete/test",
-                                "/base2/get2/test", "/base2/put2/test", "/base2/post2/test", "/base2/delete2/test")));
+                                "/base2/get2/test", "/base2/put2/test", "/base2/post2/test", "/base2/delete2/test")),
+                Arguments.of(new ExtendedMappingController(), Arrays.asList("/base", "/base/different")),
+                Arguments.of(new NonPublicMappingController(), Arrays.asList("/base", "/base/different")));
     }
 
 

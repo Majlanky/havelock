@@ -103,7 +103,7 @@ public class HavelockWebSecurity extends WebSecurityConfigurerAdapter {
             Class<?> controllerUserClass = ClassUtils.getUserClass(bean.getClass());
             boolean controllerPublic = isPublic(controllerUserClass);
             List<String> basePaths = findMappingPaths(controllerUserClass, Collections.emptyList());
-            Set<String> controllerPublicPaths = Arrays.stream(controllerUserClass.getMethods())
+            Set<String> controllerPublicPaths = Arrays.stream(controllerUserClass.getDeclaredMethods())
                     .filter(m -> controllerPublic || isPublic(m))
                     .flatMap(m -> findMappingPaths(m, basePaths).stream())
                     .collect(Collectors.toSet());
