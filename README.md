@@ -9,7 +9,7 @@
 
 Havelock project started in 2022. Basic idea and motivation was to invert and simplify logic of Spring security configuration regarding public endpoints.
 When security is used especially with other libraries as SpringDoc, it is very non-centralized to make an endpoint public. First things first endpoint must be 
-declared in controller, SpringDoc annotation (for example SecurityRequirements) used on the endpoint and than the endpoint must be permitted for all in 
+declared in controller, SpringDoc annotation (for example SecurityRequirements) used on the endpoint and then the endpoint must be permitted for all in 
 security config. One thing wrong and everything goes wrong. The other thing is repeated things like exposing Swagger UI and api docs.
  
 Artifacts releases are available on maven central (and on pages indexing central):
@@ -28,7 +28,7 @@ The main focus is to remove repeated code and lower the effort to proper configu
 in the code on one place.
 
 ## Getting Started 
-First of all we have to add Maven dependency
+First things first we have to add Maven dependency
 ```xml
 <dependency>
    <groupId>com.groocraft</groupId>
@@ -36,8 +36,15 @@ First of all we have to add Maven dependency
   <version>${version}</version>
 </dependency>
 ```
+![](https://img.shields.io/badge/-Warning-red)
+Originally Havelock has used WebSecurityConfigurerAdapter internally. Because it cases problem in project where SecurityFilterChain was configured, Havelock 
+added support for both and what is used is determined by configuration of `@EnableHavelock`. Check the following chapters to find you how to do it for both 
+cases. For backward compatibility of the previous Havelock version, the SecurityFilterChain approach must be explicitly turned on even it is by 
+Spring preferred way.
+
 When you have Havelock on you classpath the first thing that must be done is to place @EnableHavelock on Application class of Spring Boot or one of 
-Configuration classes. For example like this:
+Configuration classes. 
+For example like this if you are using WebSecurityConfigurerAdapter:
 ```java
 @Configuration
 @EnableWebSecurity
@@ -46,6 +53,16 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     ...
 }
 ```
+or like this if you are using SecurityFilterChain:
+```java
+@Configuration
+@EnableWebSecurity
+@EnableHavelock(useSecurityFilter = true)
+public class WebSecurityConfig{
+    ...
+}
+```
+
 The other thing is to place @Public on method or whole controller that represents an endpoint you want to make public. 
 Example of making public all endpoint of a controller:  
 ```java

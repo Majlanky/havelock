@@ -16,8 +16,12 @@
 
 package com.groocraft.havelock.registration;
 
+import com.groocraft.havelock.CorsConfigurationResolver;
+import com.groocraft.havelock.PublicPathResolver;
 import com.groocraft.havelock.annotation.EnableHavelock;
+import com.groocraft.havelock.security.HavelockSecurityConfiguration;
 import com.groocraft.havelock.security.HavelockWebSecurity;
+import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,10 +40,13 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -86,24 +93,62 @@ class HavelockRegistrarTest {
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
 
-        registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+        AtomicReference<List<?>> pathResolverArguments = new AtomicReference<>();
+        AtomicReference<List<?>> corsResolverArguments = new AtomicReference<>();
+        AtomicReference<List<?>> securityCustomizerArguments = new AtomicReference<>();
+        try (MockedConstruction<PublicPathResolver> mockedPathResolverConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> {
+                    pathResolverArguments.set(c.arguments());
+                    when(m.getPublicPaths()).thenReturn(publicPaths);
+                });
+             MockedConstruction<CorsConfigurationResolver> mockedCorsResolverConstruction = mockConstruction(CorsConfigurationResolver.class,
+                     (m, c) -> corsResolverArguments.set(c.arguments()));
+             MockedConstruction<HavelockWebSecurityCustomizer> mockedCustomizerConstruction = mockConstruction(HavelockWebSecurityCustomizer.class,
+                     (m, c) -> securityCustomizerArguments.set(c.arguments()))) {
+            registrar = new HavelockRegistrar(beanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
 
-        ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
-        verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
-        AtomicReference<List<?>> constructorArguments = new AtomicReference<>();
-        try (MockedConstruction<HavelockWebSecurity> mockedConstruction = mockConstruction(HavelockWebSecurity.class,
-                (m, c) -> constructorArguments.set(c.arguments()))) {
-            definitionCaptor.getValue().getInstanceSupplier().get();
+            ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
+            verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
+            assertEquals(HavelockWebSecurity.class, definitionCaptor.getValue().getInstanceSupplier().get().getClass());
         }
-        assertSame(enableHavelock, constructorArguments.get().get(2));
-        assertSame(environment, constructorArguments.get().get(1));
-        assertTrue(HierarchicalBeanFactory.class.isAssignableFrom(constructorArguments.get().get(0).getClass()));
-        assertSame(beanFactory, ((HierarchicalBeanFactory) constructorArguments.get().get(0)).getParentBeanFactory());
+        assertSame(environment, securityCustomizerArguments.get().get(0));
+
+        assertTrue(HierarchicalBeanFactory.class.isAssignableFrom(pathResolverArguments.get().get(0).getClass()));
+        assertSame(beanFactory, ((HierarchicalBeanFactory) pathResolverArguments.get().get(0)).getParentBeanFactory());
+
+        assertTrue(HierarchicalBeanFactory.class.isAssignableFrom(corsResolverArguments.get().get(0).getClass()));
+        assertSame(beanFactory, ((HierarchicalBeanFactory) corsResolverArguments.get().get(0)).getParentBeanFactory());
+        assertSame(enableHavelock, corsResolverArguments.get().get(1));
     }
 
     @Test
-    void testListableBeanFactoryIsUsedAsIs(){
-        registrar = new HavelockRegistrar(listableBeanFactory, environment);
+    void testFilterChainIsUsedWhenConfigured() {
+        MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
+        MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
+        EnableHavelock enableHavelock = mock(EnableHavelock.class);
+        when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
+        when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
+        when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
+        when(enableHavelock.useSecurityFilter()).thenReturn(true);
+
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+        try (MockedConstruction<PublicPathResolver> mockedPathResolverConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> when(m.getPublicPaths()).thenReturn(publicPaths))) {
+            registrar = new HavelockRegistrar(beanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+
+            ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
+            verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
+            assertEquals(HavelockSecurityConfiguration.class, definitionCaptor.getValue().getInstanceSupplier().get().getClass());
+        }
+    }
+
+    @Test
+    void testListableBeanFactoryIsUsedAsIs() {
         MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
         MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
         EnableHavelock enableHavelock = mock(EnableHavelock.class);
@@ -111,13 +156,18 @@ class HavelockRegistrarTest {
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
 
-        registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
-
-        ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
-        verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
         AtomicReference<List<?>> constructorArguments = new AtomicReference<>();
-        try (MockedConstruction<HavelockWebSecurity> mockedConstruction = mockConstruction(HavelockWebSecurity.class,
-                (m, c) -> constructorArguments.set(c.arguments()))) {
+        try (MockedConstruction<PublicPathResolver> mockedConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> {
+                    constructorArguments.set(c.arguments());
+                    when(m.getPublicPaths()).thenReturn(publicPaths);
+                })) {
+            registrar = new HavelockRegistrar(listableBeanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+            ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
+            verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
             definitionCaptor.getValue().getInstanceSupplier().get();
         }
         assertSame(listableBeanFactory, constructorArguments.get().get(0));
@@ -132,12 +182,18 @@ class HavelockRegistrarTest {
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
 
-        registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
-
-        ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
-        verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
-
-        definitionCaptor.getValue().getInstanceSupplier().get();
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+        try (MockedConstruction<PublicPathResolver> mockedConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> when(m.getPublicPaths()).thenReturn(publicPaths))) {
+            registrar = new HavelockRegistrar(listableBeanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+            ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
+            verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
+            definitionCaptor.getValue().getInstanceSupplier().get();
+        }
     }
+
+    //FIXME test chain vs adapter switch
 
 }

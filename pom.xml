@@ -62,12 +62,12 @@
     <properties>
         <java.version>8</java.version>
         <spring.web.version>5.3.20</spring.web.version>
-        <spring.security.version>5.6.4</spring.security.version>
-        <spring.boot.version>2.6.7</spring.boot.version>
+        <spring.security.version>5.7.1</spring.security.version>
+        <spring.boot.version>2.7.0</spring.boot.version>
         <lombok.version>1.18.24</lombok.version>
         <servlet.api.version>4.0.1</servlet.api.version>
         <slf4j.version>1.7.36</slf4j.version>
-        <mockito.version>4.5.1</mockito.version>
+        <mockito.version>4.6.1</mockito.version>
         <jupiter.version>5.8.2</jupiter.version>
         <swagger.annotations.version>2.2.0</swagger.annotations.version>
     </properties>

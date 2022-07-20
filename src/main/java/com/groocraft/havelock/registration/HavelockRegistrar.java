@@ -16,8 +16,13 @@
 
 package com.groocraft.havelock.registration;
 
+import com.groocraft.havelock.CorsConfigurationResolver;
+import com.groocraft.havelock.PublicPathResolver;
 import com.groocraft.havelock.annotation.EnableHavelock;
+import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
+import com.groocraft.havelock.security.HavelockSecurityConfiguration;
 import com.groocraft.havelock.security.HavelockWebSecurity;
+import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.BeanFactory;
@@ -32,8 +37,11 @@ import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.lang.NonNull;
 
+import java.util.function.Supplier;
+
 /**
- * Registrar for registration of {@link HavelockWebSecurity} with the configuration provided in {@link EnableHavelock} annotation.
+ * Registrar for registration of {@link HavelockWebSecurity} or {@link HavelockSecurityConfiguration} both with the configuration
+ * provided in {@link EnableHavelock} annotation.
  *
  * @author Majlanky
  */
@@ -43,10 +51,10 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
 
     private static final String BEAN_NAME = "havelockWebSecurity";
 
-    private final @NonNull
-    BeanFactory beanFactory;
-    private final @NonNull
-    Environment environment;
+    @NonNull
+    private final BeanFactory beanFactory;
+    @NonNull
+    private final Environment environment;
 
     /**
      * Registers {@link HavelockWebSecurity} under {@link #BEAN_NAME} into the given registry.
@@ -57,15 +65,39 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
      */
     @Override
     public void registerBeanDefinitions(@NonNull AnnotationMetadata importingClassMetadata, @NonNull BeanDefinitionRegistry registry) {
-        GenericBeanDefinition definition = new GenericBeanDefinition();
-        definition.setBeanClass(HavelockWebSecurity.class);
-        definition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
         EnableHavelock enableHavelock = importingClassMetadata.getAnnotations().get(EnableHavelock.class)
                 .synthesize(MergedAnnotation::isPresent)
                 .orElseThrow(() -> new IllegalArgumentException("Havelock registrar not invoked by EnableHavelock annotated class"));
-        definition.setInstanceSupplier(() -> new HavelockWebSecurity(makeListableIfNecessary(beanFactory), environment, enableHavelock));
-        registry.registerBeanDefinition(BEAN_NAME, definition);
+        ListableBeanFactory listableBeanFactory = makeListableIfNecessary(beanFactory);
+        PublicPathResolver publicPathResolver = new PublicPathResolver(listableBeanFactory);
+        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
+        HavelockWebSecurityCustomizer webSecurityCustomizer = new HavelockWebSecurityCustomizer(environment, enableHavelock);
+        HavelockHttpSecurityCustomizer httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver,
+                corsConfigurationResolver, enableHavelock.cors(), enableHavelock.csrf());
+        if (enableHavelock.useSecurityFilter()) {
+            registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockSecurityConfiguration.class,
+                    () -> new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer)));
+        } else {
+            registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockWebSecurity.class,
+                    () -> new HavelockWebSecurity(httpSecurityCustomizer, webSecurityCustomizer)));
+        }
         log.debug("Havelock registered");
+    }
+
+    /**
+     * Helper to create bean definition of {@link BeanDefinition#ROLE_INFRASTRUCTURE} of the given class.
+     *
+     * @param clazz            of the bean. Must not be {@literal null}
+     * @param instanceSupplier must not be {@literal null}
+     * @param <T>              type of bean class
+     * @return definition with the given supplier, clazz and {@link BeanDefinition#ROLE_INFRASTRUCTURE}
+     */
+    private <T> GenericBeanDefinition infrastructureBeanDefinition(@NonNull Class<T> clazz, @NonNull Supplier<T> instanceSupplier) {
+        GenericBeanDefinition definition = new GenericBeanDefinition();
+        definition.setBeanClass(clazz);
+        definition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
+        definition.setInstanceSupplier(instanceSupplier);
+        return definition;
     }
 
     /**
