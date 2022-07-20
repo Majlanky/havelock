@@ -33,7 +33,7 @@
         <connection>scm:git:git://github.com/majlanky/havelock.git</connection>
         <developerConnection>scm:git:ssh://github.com:majlanky/havelock.git</developerConnection>
         <url>https://github.com/majlanky/havelock/tree/master</url>
-        <tag>v1.1.0</tag>
+        <tag>v1.2.0</tag>
     </scm>
 
     <licenses>
