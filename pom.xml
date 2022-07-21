@@ -69,7 +69,7 @@
         <slf4j.version>1.7.36</slf4j.version>
         <mockito.version>4.6.1</mockito.version>
         <jupiter.version>5.8.2</jupiter.version>
-        <swagger.annotations.version>2.2.0</swagger.annotations.version>
+        <swagger.annotations.version>2.2.1</swagger.annotations.version>
     </properties>
 
     <dependencies>
