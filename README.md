@@ -11,7 +11,10 @@ Havelock project started in 2022. Basic idea and motivation was to invert and si
 When security is used especially with other libraries as SpringDoc, it is very non-centralized to make an endpoint public. First things first endpoint must be 
 declared in controller, SpringDoc annotation (for example SecurityRequirements) used on the endpoint and then the endpoint must be permitted for all in 
 security config. One thing wrong and everything goes wrong. The other thing is repeated things like exposing Swagger UI and api docs.
- 
+
+From version 1.3.0 Havelock can provide actuator endpoint `publicpaths` that provides list of all public path. This feature is disabled by default. See
+[wiki](https://github.com/Majlanky/havelock/wiki) for more information...
+
 Artifacts releases are available on maven central (and on pages indexing central):
 * [central](https://repo1.maven.org/maven2/com/groocraft/havelock/)
 * [mvnRepository](https://mvnrepository.com/artifact/com.groocraft/havelock)

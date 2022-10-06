@@ -54,6 +54,8 @@ import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -88,7 +90,7 @@ class HavelockRegistrarTest {
     void testRegisteredDefinitionInitializerPassesProperValues() {
         MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
         MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
-        EnableHavelock enableHavelock = mock(EnableHavelock.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
         when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
@@ -128,7 +130,7 @@ class HavelockRegistrarTest {
     void testFilterChainIsUsedWhenConfigured() {
         MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
         MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
-        EnableHavelock enableHavelock = mock(EnableHavelock.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
         when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
@@ -151,7 +153,7 @@ class HavelockRegistrarTest {
     void testListableBeanFactoryIsUsedAsIs() {
         MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
         MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
-        EnableHavelock enableHavelock = mock(EnableHavelock.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
         when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
@@ -177,7 +179,7 @@ class HavelockRegistrarTest {
     void testRegistrationIsSuccessfullyDone() {
         MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
         MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
-        EnableHavelock enableHavelock = mock(EnableHavelock.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
         when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
         when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
@@ -195,5 +197,47 @@ class HavelockRegistrarTest {
     }
 
     //FIXME test chain vs adapter switch
+
+    @Test
+    void testRegistrationOfPublicPathEndpointIsNotDoneByDefault() {
+        MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
+        MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
+        when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
+        when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
+        when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
+
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+        try (MockedConstruction<PublicPathResolver> mockedConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> when(m.getPublicPaths()).thenReturn(publicPaths))) {
+            registrar = new HavelockRegistrar(listableBeanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+            verify(beanDefinitionRegistry, never()).registerBeanDefinition(eq("publicPathEndpoint"), any());
+        }
+    }
+
+    @Test
+    void testRegistrationOfPublicPathEndpointIsSuccessfullyDone() {
+        MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
+        MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
+        when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
+        when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
+        when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
+        when(enableHavelock.publicPathsEndpoint()).thenReturn(true);
+
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+        try (MockedConstruction<PublicPathResolver> mockedConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> when(m.getPublicPaths()).thenReturn(publicPaths))) {
+            registrar = new HavelockRegistrar(listableBeanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+            ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
+            verify(beanDefinitionRegistry).registerBeanDefinition(eq("publicPathEndpoint"), definitionCaptor.capture());
+            definitionCaptor.getValue().getInstanceSupplier().get();
+        }
+    }
+
 
 }

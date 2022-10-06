@@ -18,6 +18,7 @@ package com.groocraft.havelock.registration;
 
 import com.groocraft.havelock.CorsConfigurationResolver;
 import com.groocraft.havelock.PublicPathResolver;
+import com.groocraft.havelock.actuator.PublicPathEndpoint;
 import com.groocraft.havelock.annotation.EnableHavelock;
 import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
 import com.groocraft.havelock.security.HavelockSecurityConfiguration;
@@ -50,6 +51,7 @@ import java.util.function.Supplier;
 public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
 
     private static final String BEAN_NAME = "havelockWebSecurity";
+    private static final String ENDPOINT_NAME = "publicPathEndpoint";
 
     @NonNull
     private final BeanFactory beanFactory;
@@ -57,7 +59,8 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
     private final Environment environment;
 
     /**
-     * Registers {@link HavelockWebSecurity} under {@link #BEAN_NAME} into the given registry.
+     * Registers {@link HavelockWebSecurity} or {@link HavelockSecurityConfiguration} under {@link #BEAN_NAME}
+     * and {@link PublicPathEndpoint} (if configured) under {@link #ENDPOINT_NAME} into the given registry.
      * {@inheritDoc}
      *
      * @param importingClassMetadata must contain {@link EnableHavelock} and must not be {@literal null}
@@ -80,6 +83,10 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
         } else {
             registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockWebSecurity.class,
                     () -> new HavelockWebSecurity(httpSecurityCustomizer, webSecurityCustomizer)));
+        }
+        if(enableHavelock.publicPathsEndpoint()){
+            registry.registerBeanDefinition(ENDPOINT_NAME, infrastructureBeanDefinition(PublicPathEndpoint.class,
+                    () -> new PublicPathEndpoint(publicPathResolver)));
         }
         log.debug("Havelock registered");
     }
