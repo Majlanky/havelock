@@ -19,12 +19,15 @@ package com.groocraft.havelock.registration;
 import com.groocraft.havelock.CorsConfigurationResolver;
 import com.groocraft.havelock.PublicPathResolver;
 import com.groocraft.havelock.annotation.EnableHavelock;
+import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
+import com.groocraft.havelock.security.HavelockPublicChainCustomizer;
 import com.groocraft.havelock.security.HavelockSecurityConfiguration;
 import com.groocraft.havelock.security.HavelockWebSecurity;
 import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockedConstruction;
@@ -32,12 +35,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.HierarchicalBeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.support.AbstractBeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.core.annotation.MergedAnnotation;
 import org.springframework.core.annotation.MergedAnnotations;
 import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 
 import java.util.Collections;
 import java.util.HashSet;
@@ -45,6 +50,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -57,6 +63,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,6 +79,10 @@ class HavelockRegistrarTest {
     AnnotationMetadata annotationMetadata;
     @Mock
     BeanDefinitionRegistry beanDefinitionRegistry;
+    @Mock(answer = Answers.RETURNS_DEEP_STUBS)
+    ObjectProvider objectProvider;
+    @Mock
+    HttpSecurity httpSecurity;
 
     HavelockRegistrar registrar;
 
@@ -196,8 +207,6 @@ class HavelockRegistrarTest {
         }
     }
 
-    //FIXME test chain vs adapter switch
-
     @Test
     void testRegistrationOfPublicPathEndpointIsNotDoneByDefault() {
         MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
@@ -239,5 +248,34 @@ class HavelockRegistrarTest {
         }
     }
 
+    @Test
+    void testPublicChainCustomizerIsUsedLazily() throws Exception {
+        MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
+        MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
+        EnableHavelock enableHavelock = spy(EnableHavelock.class);
+        when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
+        when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
+        when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
+        when(enableHavelock.publicPathsEndpoint()).thenReturn(true);
+        when(listableBeanFactory.getBeanProvider(HavelockPublicChainCustomizer.class)).thenReturn(objectProvider);
+        when(objectProvider.getIfAvailable(any())).thenAnswer(i -> ((Supplier<HavelockPublicChainCustomizer>)i.getArgument(0)).get());
+
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+        AtomicReference<HavelockPublicChainCustomizer> publicChainCustomizer = new AtomicReference<>();
+        try (MockedConstruction<PublicPathResolver> mockedConstruction = mockConstruction(PublicPathResolver.class,
+                (m, c) -> when(m.getPublicPaths()).thenReturn(publicPaths));
+             MockedConstruction<HavelockHttpSecurityCustomizer> mockedConstruction2 = mockConstruction(HavelockHttpSecurityCustomizer.class,
+                     (m, c) -> publicChainCustomizer.set((HavelockPublicChainCustomizer) c.arguments().get(2)))) {
+
+            registrar = new HavelockRegistrar(listableBeanFactory, environment);
+            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
+            verifyNoInteractions(objectProvider);
+
+            publicChainCustomizer.get().customize(httpSecurity);
+
+            verify(objectProvider).getIfAvailable(any());
+        }
+    }
 
 }

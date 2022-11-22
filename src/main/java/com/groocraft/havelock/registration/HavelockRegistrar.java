@@ -21,6 +21,7 @@ import com.groocraft.havelock.PublicPathResolver;
 import com.groocraft.havelock.actuator.PublicPathEndpoint;
 import com.groocraft.havelock.annotation.EnableHavelock;
 import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
+import com.groocraft.havelock.security.HavelockPublicChainCustomizer;
 import com.groocraft.havelock.security.HavelockSecurityConfiguration;
 import com.groocraft.havelock.security.HavelockWebSecurity;
 import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
@@ -76,7 +77,7 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
         CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
         HavelockWebSecurityCustomizer webSecurityCustomizer = new HavelockWebSecurityCustomizer(environment, enableHavelock);
         HavelockHttpSecurityCustomizer httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver,
-                corsConfigurationResolver, enableHavelock.cors(), enableHavelock.csrf());
+                corsConfigurationResolver, getLazyHavelockPublicChainCustomizer(), enableHavelock.cors(), enableHavelock.csrf());
         if (enableHavelock.useSecurityFilter()) {
             registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockSecurityConfiguration.class,
                     () -> new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer)));
@@ -84,11 +85,23 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
             registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockWebSecurity.class,
                     () -> new HavelockWebSecurity(httpSecurityCustomizer, webSecurityCustomizer)));
         }
-        if(enableHavelock.publicPathsEndpoint()){
+        if (enableHavelock.publicPathsEndpoint()) {
             registry.registerBeanDefinition(ENDPOINT_NAME, infrastructureBeanDefinition(PublicPathEndpoint.class,
                     () -> new PublicPathEndpoint(publicPathResolver)));
         }
         log.debug("Havelock registered");
+    }
+
+    /**
+     * @return {@link HavelockHttpSecurityCustomizer} that is initialized in the application context if any or mock customizer for non-null API.
+     */
+    @NonNull
+    private HavelockPublicChainCustomizer getLazyHavelockPublicChainCustomizer() {
+        return http -> beanFactory
+                .getBeanProvider(HavelockPublicChainCustomizer.class)
+                .getIfAvailable(() -> h -> {
+                })
+                .customize(http);
     }
 
     /**
@@ -99,6 +112,7 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
      * @param <T>              type of bean class
      * @return definition with the given supplier, clazz and {@link BeanDefinition#ROLE_INFRASTRUCTURE}
      */
+    @NonNull
     private <T> GenericBeanDefinition infrastructureBeanDefinition(@NonNull Class<T> clazz, @NonNull Supplier<T> instanceSupplier) {
         GenericBeanDefinition definition = new GenericBeanDefinition();
         definition.setBeanClass(clazz);

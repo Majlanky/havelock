@@ -39,6 +39,7 @@ import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -52,12 +53,42 @@ class HavelockHttpSecurityCustomizerTest {
     HttpSecurity httpSecurity;
     @Mock
     PublicPathResolver publicPathResolver;
+    @Mock
+    HavelockPublicChainCustomizer publicChainCustomizer;
 
     HavelockHttpSecurityCustomizer httpSecurityCustomizer;
 
     @Test
+    void testExistingPublicChainCustomizerIsUsed() throws Exception {
+        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), publicChainCustomizer, false, false);
+
+        Set<String> publicPaths = new HashSet<>();
+        publicPaths.add("/test");
+
+        when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
+        ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
+        HttpSecurity.RequestMatcherConfigurer matcherConfigurer = mock(HttpSecurity.RequestMatcherConfigurer.class, Answers.RETURNS_DEEP_STUBS);
+        ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry urlRegistry =
+                mock(ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry.class);
+        ExpressionUrlAuthorizationConfigurer.AuthorizedUrl authorizedUrl = mock(ExpressionUrlAuthorizationConfigurer.AuthorizedUrl.class,
+                Answers.RETURNS_DEEP_STUBS);
+        when(matcherConfigurer.and()).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeRequests()).thenReturn(urlRegistry);
+        when(urlRegistry.anyRequest()).thenReturn(authorizedUrl);
+        when(authorizedUrl.permitAll()).thenReturn(urlRegistry);
+        when(urlRegistry.and()).thenReturn(httpSecurity);
+        when(httpSecurity.requestMatchers().antMatchers(permittedPaths.capture())).thenReturn(matcherConfigurer);
+        when(httpSecurity.cors(any())).thenReturn(httpSecurity);
+        when(httpSecurity.csrf(any())).thenReturn(httpSecurity);
+
+        httpSecurityCustomizer.customize(httpSecurity);
+
+        verify(publicChainCustomizer).customize(httpSecurity);
+    }
+
+    @Test
     void testNoHttpSecurityAddedWhenNoPublicEndpoints() throws Exception {
-        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), false, false);
+        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), publicChainCustomizer, false, false);
 
         when(publicPathResolver.getPublicPaths()).thenReturn(new HashSet<>());
         httpSecurityCustomizer.customize(httpSecurity);
@@ -69,7 +100,7 @@ class HavelockHttpSecurityCustomizerTest {
     void testCorsIsEnabledWhenConfigured() throws Exception {
         Set<String> publicPaths = new HashSet<>();
         publicPaths.add("/get/test");
-        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), true, false);
+        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), publicChainCustomizer, true, false);
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
@@ -108,7 +139,7 @@ class HavelockHttpSecurityCustomizerTest {
     void testCsrfIsEnabledWhenConfigured() throws Exception {
         Set<String> publicPaths = new HashSet<>();
         publicPaths.add("/get/test");
-        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), false, true);
+        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, mock(CorsConfigurationResolver.class), publicChainCustomizer, false, true);
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
@@ -132,7 +163,7 @@ class HavelockHttpSecurityCustomizerTest {
         httpSecurityCustomizer.customize(httpSecurity);
 
         assertEquals(1, permittedPaths.getAllValues().size());
-        assertTrue(permittedPaths.getAllValues().containsAll(Arrays.asList("/get/test")));
+        assertTrue(permittedPaths.getAllValues().containsAll(Collections.singletonList("/get/test")));
         verify(authorizedUrl).permitAll();
 
         CorsConfigurer<HttpSecurity> corsConfigurer = mock(CorsConfigurer.class);
@@ -150,7 +181,7 @@ class HavelockHttpSecurityCustomizerTest {
         CorsConfigurationSource configurationSource = mock(CorsConfigurationSource.class);
         CorsConfigurationResolver corsConfigurationResolver = mock(CorsConfigurationResolver.class);
         when(corsConfigurationResolver.getConfigurationSource()).thenReturn(Optional.of(configurationSource));
-        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, corsConfigurationResolver, true, false);
+        httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver, corsConfigurationResolver, publicChainCustomizer, true, false);
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);

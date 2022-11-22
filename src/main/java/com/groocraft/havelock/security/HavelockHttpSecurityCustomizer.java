@@ -43,6 +43,8 @@ public class HavelockHttpSecurityCustomizer {
     private final PublicPathResolver publicPathResolver;
     @NonNull
     private final CorsConfigurationResolver corsConfigurationResolver;
+    @NonNull
+    private final HavelockPublicChainCustomizer publicChainCustomizer;
     private final boolean cors;
     private final boolean csrf;
 
@@ -58,10 +60,11 @@ public class HavelockHttpSecurityCustomizer {
         Set<String> publicPaths = publicPathResolver.getPublicPaths();
         if (!publicPaths.isEmpty()) {
             List<String> publicAntMatchers = new ArrayList<>(publicPaths);
-            http.requestMatchers().antMatchers(publicAntMatchers.toArray(new String[publicAntMatchers.size()])).and()
-                    .authorizeRequests().anyRequest().permitAll().and()
-                    .csrf(this::configureCsrf)
-                    .cors(this::configureCors);
+            publicChainCustomizer.customize(
+                    http.requestMatchers().antMatchers(publicAntMatchers.toArray(new String[0])).and()
+                            .authorizeRequests().anyRequest().permitAll().and()
+                            .csrf(this::configureCsrf)
+                            .cors(this::configureCors));
         }
         return !publicPaths.isEmpty();
     }
