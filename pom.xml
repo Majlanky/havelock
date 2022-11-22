@@ -6,7 +6,7 @@
 
     <groupId>com.groocraft</groupId>
     <artifactId>havelock</artifactId>
-    <version>1.4.0</version>
+    <version>1.5.0-SNAPSHOT</version>
     <name>Havelock</name>
     <description>Spring security enhancement providing annotation based permitAll access, SpringDoc security item reverse logic and
     multi OAuth2 resource server support</description>
