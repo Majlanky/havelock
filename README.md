@@ -1,3 +1,4 @@
+TODO fix readme to match spring boot 3+
 # Havelock
 [![Build Status](https://travis-ci.com/Majlanky/havelock.svg?branch=master)](https://travis-ci.com/Majlanky/havelock)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=com.groocraft%3Ahavelock&metric=coverage)](https://sonarcloud.io/dashboard?id=com.groocraft%3Ahavelock)

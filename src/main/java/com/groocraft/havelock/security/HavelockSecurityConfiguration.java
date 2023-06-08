@@ -16,18 +16,18 @@
 
 package com.groocraft.havelock.security;
 
-import com.groocraft.havelock.annotation.EnableHavelock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.core.annotation.Order;
+import org.springframework.lang.NonNull;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.SecurityFilterChain;
 
 /**
- * If the {@link SecurityFilterChain} approach is enabled (by {@link EnableHavelock#useSecurityFilter()}), this class is provided as a bean
- * for setting Havelock part of security. It provides {@link SecurityFilterChain} if there is any path marked by
- * {@link com.groocraft.havelock.annotation.Public} and {@link WebSecurityCustomizer} to remove any security for Swagger.
+ * This class is provided as a bean for setting Havelock part of security. It provides {@link SecurityFilterChain}
+ * if there is any path marked by {@link com.groocraft.havelock.annotation.Public} and {@link WebSecurityCustomizer}
+ * to remove any security for Swagger.
  *
  * @author Majlanky
  */
@@ -37,17 +37,25 @@ public class HavelockSecurityConfiguration {
     private final HavelockHttpSecurityCustomizer httpSecurityCustomizer;
     private final WebSecurityCustomizer webSecurityCustomizer;
 
+    /**
+     * @param httpSecurity provided by Spring must not be {@literal null}
+     * @return {@link SecurityFilterChain} build from the given and customized {@link HttpSecurity}
+     * @throws Exception in case customization of the given {@link HttpSecurity} fails
+     */
     @Order(-1)
     @Bean
-    public SecurityFilterChain havelockSecurityFilterChain(HttpSecurity httpSecurity) throws Exception {
-        if(httpSecurityCustomizer.customize(httpSecurity)){
+    public SecurityFilterChain havelockSecurityFilterChain(@NonNull HttpSecurity httpSecurity) throws Exception {
+        if (httpSecurityCustomizer.customize(httpSecurity)) {
             return httpSecurity.build();
         }
         return null;
     }
 
+    /**
+     * @return customizer that is used by Spring to customize {@link org.springframework.security.config.annotation.web.builders.WebSecurity}
+     */
     @Bean
-    public WebSecurityCustomizer havelockWebSecurityCustomizer(){
+    public WebSecurityCustomizer havelockWebSecurityCustomizer() {
         return webSecurityCustomizer;
     }
 

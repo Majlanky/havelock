@@ -23,7 +23,6 @@ import com.groocraft.havelock.annotation.EnableHavelock;
 import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
 import com.groocraft.havelock.security.HavelockPublicChainCustomizer;
 import com.groocraft.havelock.security.HavelockSecurityConfiguration;
-import com.groocraft.havelock.security.HavelockWebSecurity;
 import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +41,7 @@ import org.springframework.lang.NonNull;
 import java.util.function.Supplier;
 
 /**
- * Registrar for registration of {@link HavelockWebSecurity} or {@link HavelockSecurityConfiguration} both with the configuration
- * provided in {@link EnableHavelock} annotation.
+ * Registrar for registration of {@link HavelockSecurityConfiguration} with the configuration provided in {@link EnableHavelock} annotation.
  *
  * @author Majlanky
  */
@@ -60,8 +58,8 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
     private final Environment environment;
 
     /**
-     * Registers {@link HavelockWebSecurity} or {@link HavelockSecurityConfiguration} under {@link #BEAN_NAME}
-     * and {@link PublicPathEndpoint} (if configured) under {@link #ENDPOINT_NAME} into the given registry.
+     * Registers {@link HavelockSecurityConfiguration} under {@link #BEAN_NAME} and {@link PublicPathEndpoint} (if configured)
+     * under {@link #ENDPOINT_NAME} into the given registry.
      * {@inheritDoc}
      *
      * @param importingClassMetadata must contain {@link EnableHavelock} and must not be {@literal null}
@@ -78,13 +76,8 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
         HavelockWebSecurityCustomizer webSecurityCustomizer = new HavelockWebSecurityCustomizer(environment, enableHavelock);
         HavelockHttpSecurityCustomizer httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver,
                 corsConfigurationResolver, getLazyHavelockPublicChainCustomizer(), enableHavelock.cors(), enableHavelock.csrf());
-        if (enableHavelock.useSecurityFilter()) {
-            registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockSecurityConfiguration.class,
-                    () -> new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer)));
-        } else {
-            registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockWebSecurity.class,
-                    () -> new HavelockWebSecurity(httpSecurityCustomizer, webSecurityCustomizer)));
-        }
+        registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockSecurityConfiguration.class,
+                () -> new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer)));
         if (enableHavelock.publicPathsEndpoint()) {
             registry.registerBeanDefinition(ENDPOINT_NAME, infrastructureBeanDefinition(PublicPathEndpoint.class,
                     () -> new PublicPathEndpoint(publicPathResolver)));

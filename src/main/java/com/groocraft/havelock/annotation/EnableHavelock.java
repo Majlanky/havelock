@@ -18,7 +18,6 @@ package com.groocraft.havelock.annotation;
 
 import com.groocraft.havelock.registration.HavelockRegistrar;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.web.cors.CorsConfigurationSource;
 
 import java.lang.annotation.ElementType;
@@ -71,15 +70,6 @@ public @interface EnableHavelock {
      * @return false by default
      */
     boolean exposeSpringDoc() default false;
-
-    /**
-     * Specifies if the security configuration is done by {@link WebSecurityConfigurerAdapter} or
-     * {@link org.springframework.security.web.SecurityFilterChain}. These two approaches must and can not be mixed so Havelock provides both
-     * possibilities
-     *
-     * @return false by default to keep backward compatibility
-     */
-    boolean useSecurityFilter() default false;
 
     /**
      * Specifies if Actuator endpoint {@code publicpaths} will be provided by application. Endpoint respects actuator configuration so it can

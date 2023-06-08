@@ -22,7 +22,6 @@ import com.groocraft.havelock.annotation.EnableHavelock;
 import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
 import com.groocraft.havelock.security.HavelockPublicChainCustomizer;
 import com.groocraft.havelock.security.HavelockSecurityConfiguration;
-import com.groocraft.havelock.security.HavelockWebSecurity;
 import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -125,7 +124,7 @@ class HavelockRegistrarTest {
 
             ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
             verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
-            assertEquals(HavelockWebSecurity.class, definitionCaptor.getValue().getInstanceSupplier().get().getClass());
+            assertEquals(HavelockSecurityConfiguration.class, definitionCaptor.getValue().getInstanceSupplier().get().getClass());
         }
         assertSame(environment, securityCustomizerArguments.get().get(0));
 
@@ -135,29 +134,6 @@ class HavelockRegistrarTest {
         assertTrue(HierarchicalBeanFactory.class.isAssignableFrom(corsResolverArguments.get().get(0).getClass()));
         assertSame(beanFactory, ((HierarchicalBeanFactory) corsResolverArguments.get().get(0)).getParentBeanFactory());
         assertSame(enableHavelock, corsResolverArguments.get().get(1));
-    }
-
-    @Test
-    void testFilterChainIsUsedWhenConfigured() {
-        MergedAnnotations mergedAnnotations = mock(MergedAnnotations.class);
-        MergedAnnotation<EnableHavelock> mergedAnnotation = mock(MergedAnnotation.class);
-        EnableHavelock enableHavelock = spy(EnableHavelock.class);
-        when(mergedAnnotations.get(EnableHavelock.class)).thenReturn(mergedAnnotation);
-        when(mergedAnnotation.synthesize(any())).thenReturn(Optional.of(enableHavelock));
-        when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
-        when(enableHavelock.useSecurityFilter()).thenReturn(true);
-
-        Set<String> publicPaths = new HashSet<>();
-        publicPaths.add("/test");
-        try (MockedConstruction<PublicPathResolver> mockedPathResolverConstruction = mockConstruction(PublicPathResolver.class,
-                (m, c) -> when(m.getPublicPaths()).thenReturn(publicPaths))) {
-            registrar = new HavelockRegistrar(beanFactory, environment);
-            registrar.registerBeanDefinitions(annotationMetadata, beanDefinitionRegistry);
-
-            ArgumentCaptor<AbstractBeanDefinition> definitionCaptor = ArgumentCaptor.forClass(AbstractBeanDefinition.class);
-            verify(beanDefinitionRegistry).registerBeanDefinition(eq("havelockWebSecurity"), definitionCaptor.capture());
-            assertEquals(HavelockSecurityConfiguration.class, definitionCaptor.getValue().getInstanceSupplier().get().getClass());
-        }
     }
 
     @Test
@@ -258,7 +234,7 @@ class HavelockRegistrarTest {
         when(annotationMetadata.getAnnotations()).thenReturn(mergedAnnotations);
         when(enableHavelock.publicPathsEndpoint()).thenReturn(true);
         when(listableBeanFactory.getBeanProvider(HavelockPublicChainCustomizer.class)).thenReturn(objectProvider);
-        when(objectProvider.getIfAvailable(any())).thenAnswer(i -> ((Supplier<HavelockPublicChainCustomizer>)i.getArgument(0)).get());
+        when(objectProvider.getIfAvailable(any())).thenAnswer(i -> ((Supplier<HavelockPublicChainCustomizer>) i.getArgument(0)).get());
 
         Set<String> publicPaths = new HashSet<>();
         publicPaths.add("/test");

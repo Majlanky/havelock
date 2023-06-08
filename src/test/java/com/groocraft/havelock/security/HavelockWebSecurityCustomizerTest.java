@@ -63,10 +63,10 @@ class HavelockWebSecurityCustomizerTest {
 
         webSecurityCustomizer.customize(webSecurity);
 
-        ArgumentCaptor<String> ignoredPathsCaptor = ArgumentCaptor.forClass(String.class);
-        verify(webSecurity.ignoring()).antMatchers(ignoredPathsCaptor.capture());
+        ArgumentCaptor<String[]> ignoredPathsCaptor = ArgumentCaptor.forClass(String[].class);
+        verify(webSecurity.ignoring()).requestMatchers(ignoredPathsCaptor.capture());
 
-        assertTrue(ignoredPathsCaptor.getAllValues()
+        assertTrue(Arrays.asList(ignoredPathsCaptor.getValue())
                 .containsAll(Arrays.asList("/swagger-ui.html", "/swagger-ui**", "/swagger-ui/**", "/v3/api-docs**", "/v3/api-docs/**")));
     }
 
@@ -82,10 +82,10 @@ class HavelockWebSecurityCustomizerTest {
 
         webSecurityCustomizer.customize(webSecurity);
 
-        ArgumentCaptor<String> ignoredPathsCaptor = ArgumentCaptor.forClass(String.class);
-        verify(webSecurity.ignoring()).antMatchers(ignoredPathsCaptor.capture());
+        ArgumentCaptor<String[]> ignoredPathsCaptor = ArgumentCaptor.forClass(String[].class);
+        verify(webSecurity.ignoring()).requestMatchers(ignoredPathsCaptor.capture());
 
-        assertTrue(ignoredPathsCaptor.getAllValues()
+        assertTrue(Arrays.asList(ignoredPathsCaptor.getValue())
                 .containsAll(Arrays.asList(configuredSwaggerUiPath, "/swagger-ui**", "/swagger-ui/**", configuredDocsPath + "**", configuredDocsPath + "/**")));
     }
 
@@ -95,7 +95,7 @@ class HavelockWebSecurityCustomizerTest {
 
         webSecurityCustomizer.customize(webSecurity);
 
-        verify(webSecurity.ignoring(), never()).antMatchers(any(String.class));
+        verify(webSecurity.ignoring(), never()).requestMatchers(any(String.class));
     }
 
 

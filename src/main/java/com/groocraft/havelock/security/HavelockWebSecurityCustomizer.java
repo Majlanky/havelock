@@ -49,7 +49,7 @@ public class HavelockWebSecurityCustomizer implements WebSecurityCustomizer {
             String staticSwaggerMatcher = "/swagger-ui";
             String uiPath = environment.getProperty("springdoc.swagger-ui.path", "/swagger-ui.html");
             String docsPath = environment.getProperty("springdoc.api-docs.path", "/v3/api-docs");
-            web.ignoring().antMatchers(
+            web.ignoring().requestMatchers(
                     allStartingWith(staticSwaggerMatcher), allPathsStartingWith(staticSwaggerMatcher),
                     allStartingWith(docsPath), allPathsStartingWith(docsPath),
                     uiPath);

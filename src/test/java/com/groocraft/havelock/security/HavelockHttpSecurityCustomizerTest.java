@@ -26,12 +26,11 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AuthorizeHttpRequestsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
 import org.springframework.security.config.annotation.web.configurers.CsrfConfigurer;
-import org.springframework.security.config.annotation.web.configurers.ExpressionUrlAuthorizationConfigurer;
 import org.springframework.web.cors.CorsConfigurationSource;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Optional;
@@ -67,19 +66,11 @@ class HavelockHttpSecurityCustomizerTest {
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
-        HttpSecurity.RequestMatcherConfigurer matcherConfigurer = mock(HttpSecurity.RequestMatcherConfigurer.class, Answers.RETURNS_DEEP_STUBS);
-        ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry urlRegistry =
-                mock(ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry.class);
-        ExpressionUrlAuthorizationConfigurer.AuthorizedUrl authorizedUrl = mock(ExpressionUrlAuthorizationConfigurer.AuthorizedUrl.class,
-                Answers.RETURNS_DEEP_STUBS);
-        when(matcherConfigurer.and()).thenReturn(httpSecurity);
-        when(httpSecurity.authorizeRequests()).thenReturn(urlRegistry);
-        when(urlRegistry.anyRequest()).thenReturn(authorizedUrl);
-        when(authorizedUrl.permitAll()).thenReturn(urlRegistry);
-        when(urlRegistry.and()).thenReturn(httpSecurity);
-        when(httpSecurity.requestMatchers().antMatchers(permittedPaths.capture())).thenReturn(matcherConfigurer);
+
         when(httpSecurity.cors(any())).thenReturn(httpSecurity);
         when(httpSecurity.csrf(any())).thenReturn(httpSecurity);
+        when(httpSecurity.securityMatcher(permittedPaths.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeHttpRequests(any())).thenReturn(httpSecurity);
 
         httpSecurityCustomizer.customize(httpSecurity);
 
@@ -104,28 +95,26 @@ class HavelockHttpSecurityCustomizerTest {
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
-        HttpSecurity.RequestMatcherConfigurer matcherConfigurer = mock(HttpSecurity.RequestMatcherConfigurer.class, Answers.RETURNS_DEEP_STUBS);
-        ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry urlRegistry =
-                mock(ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry.class);
-        ExpressionUrlAuthorizationConfigurer.AuthorizedUrl authorizedUrl = mock(ExpressionUrlAuthorizationConfigurer.AuthorizedUrl.class,
-                Answers.RETURNS_DEEP_STUBS);
+
         ArgumentCaptor<Customizer<CorsConfigurer<HttpSecurity>>> corsCustomizer = ArgumentCaptor.forClass(Customizer.class);
         ArgumentCaptor<Customizer<CsrfConfigurer<HttpSecurity>>> csrfCustomizer = ArgumentCaptor.forClass(Customizer.class);
+        ArgumentCaptor<Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry>> authorize =
+                ArgumentCaptor.forClass(Customizer.class);
 
-        when(matcherConfigurer.and()).thenReturn(httpSecurity);
-        when(httpSecurity.authorizeRequests()).thenReturn(urlRegistry);
-        when(urlRegistry.anyRequest()).thenReturn(authorizedUrl);
-        when(authorizedUrl.permitAll()).thenReturn(urlRegistry);
-        when(urlRegistry.and()).thenReturn(httpSecurity);
-        when(httpSecurity.requestMatchers().antMatchers(permittedPaths.capture())).thenReturn(matcherConfigurer);
         when(httpSecurity.cors(corsCustomizer.capture())).thenReturn(httpSecurity);
         when(httpSecurity.csrf(csrfCustomizer.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.securityMatcher(permittedPaths.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeHttpRequests(authorize.capture())).thenReturn(httpSecurity);
 
         httpSecurityCustomizer.customize(httpSecurity);
 
+        AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry =
+                mock(AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry.class, Answers.RETURNS_DEEP_STUBS);
+        authorize.getValue().customize(registry);
+
         assertEquals(1, permittedPaths.getAllValues().size());
         assertTrue(permittedPaths.getAllValues().containsAll(Collections.singletonList("/get/test")));
-        verify(authorizedUrl).permitAll();
+        verify(registry.anyRequest()).permitAll();
 
         CorsConfigurer<HttpSecurity> corsConfigurer = mock(CorsConfigurer.class);
         CsrfConfigurer<HttpSecurity> csrfConfigurer = mock(CsrfConfigurer.class);
@@ -143,28 +132,26 @@ class HavelockHttpSecurityCustomizerTest {
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
-        HttpSecurity.RequestMatcherConfigurer matcherConfigurer = mock(HttpSecurity.RequestMatcherConfigurer.class, Answers.RETURNS_DEEP_STUBS);
-        ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry urlRegistry =
-                mock(ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry.class);
-        ExpressionUrlAuthorizationConfigurer.AuthorizedUrl authorizedUrl = mock(ExpressionUrlAuthorizationConfigurer.AuthorizedUrl.class,
-                Answers.RETURNS_DEEP_STUBS);
+
         ArgumentCaptor<Customizer<CorsConfigurer<HttpSecurity>>> corsCustomizer = ArgumentCaptor.forClass(Customizer.class);
         ArgumentCaptor<Customizer<CsrfConfigurer<HttpSecurity>>> csrfCustomizer = ArgumentCaptor.forClass(Customizer.class);
+        ArgumentCaptor<Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry>> authorize =
+                ArgumentCaptor.forClass(Customizer.class);
 
-        when(matcherConfigurer.and()).thenReturn(httpSecurity);
-        when(httpSecurity.authorizeRequests()).thenReturn(urlRegistry);
-        when(urlRegistry.anyRequest()).thenReturn(authorizedUrl);
-        when(authorizedUrl.permitAll()).thenReturn(urlRegistry);
-        when(urlRegistry.and()).thenReturn(httpSecurity);
-        when(httpSecurity.requestMatchers().antMatchers(permittedPaths.capture())).thenReturn(matcherConfigurer);
         when(httpSecurity.cors(corsCustomizer.capture())).thenReturn(httpSecurity);
         when(httpSecurity.csrf(csrfCustomizer.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.securityMatcher(permittedPaths.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeHttpRequests(authorize.capture())).thenReturn(httpSecurity);
 
         httpSecurityCustomizer.customize(httpSecurity);
 
+        AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry =
+                mock(AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry.class, Answers.RETURNS_DEEP_STUBS);
+        authorize.getValue().customize(registry);
+
         assertEquals(1, permittedPaths.getAllValues().size());
         assertTrue(permittedPaths.getAllValues().containsAll(Collections.singletonList("/get/test")));
-        verify(authorizedUrl).permitAll();
+        verify(registry.anyRequest()).permitAll();
 
         CorsConfigurer<HttpSecurity> corsConfigurer = mock(CorsConfigurer.class);
         CsrfConfigurer<HttpSecurity> csrfConfigurer = mock(CsrfConfigurer.class);
@@ -185,28 +172,25 @@ class HavelockHttpSecurityCustomizerTest {
 
         when(publicPathResolver.getPublicPaths()).thenReturn(publicPaths);
         ArgumentCaptor<String> permittedPaths = ArgumentCaptor.forClass(String.class);
-        HttpSecurity.RequestMatcherConfigurer matcherConfigurer = mock(HttpSecurity.RequestMatcherConfigurer.class, Answers.RETURNS_DEEP_STUBS);
-        ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry urlRegistry =
-                mock(ExpressionUrlAuthorizationConfigurer.ExpressionInterceptUrlRegistry.class);
-        ExpressionUrlAuthorizationConfigurer.AuthorizedUrl authorizedUrl = mock(ExpressionUrlAuthorizationConfigurer.AuthorizedUrl.class,
-                Answers.RETURNS_DEEP_STUBS);
-        ArgumentCaptor<Customizer<CorsConfigurer<HttpSecurity>>> corsCustomizer = ArgumentCaptor.forClass(Customizer.class);
-        ArgumentCaptor<Customizer<CsrfConfigurer<HttpSecurity>>> csrfCustomizer = ArgumentCaptor.forClass(Customizer.class);
 
-        when(matcherConfigurer.and()).thenReturn(httpSecurity);
-        when(httpSecurity.authorizeRequests()).thenReturn(urlRegistry);
-        when(urlRegistry.anyRequest()).thenReturn(authorizedUrl);
-        when(authorizedUrl.permitAll()).thenReturn(urlRegistry);
-        when(urlRegistry.and()).thenReturn(httpSecurity);
-        when(httpSecurity.requestMatchers().antMatchers(permittedPaths.capture())).thenReturn(matcherConfigurer);
+        ArgumentCaptor<Customizer<CorsConfigurer<HttpSecurity>>> corsCustomizer = ArgumentCaptor.forClass(Customizer.class);
+        ArgumentCaptor<Customizer<AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry>> authorize =
+                ArgumentCaptor.forClass(Customizer.class);
+
         when(httpSecurity.cors(corsCustomizer.capture())).thenReturn(httpSecurity);
-        when(httpSecurity.csrf(csrfCustomizer.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.csrf(any())).thenReturn(httpSecurity);
+        when(httpSecurity.securityMatcher(permittedPaths.capture())).thenReturn(httpSecurity);
+        when(httpSecurity.authorizeHttpRequests(authorize.capture())).thenReturn(httpSecurity);
 
         httpSecurityCustomizer.customize(httpSecurity);
 
+        AuthorizeHttpRequestsConfigurer<HttpSecurity>.AuthorizationManagerRequestMatcherRegistry registry =
+                mock(AuthorizeHttpRequestsConfigurer.AuthorizationManagerRequestMatcherRegistry.class, Answers.RETURNS_DEEP_STUBS);
+        authorize.getValue().customize(registry);
+
         assertEquals(1, permittedPaths.getAllValues().size());
         assertTrue(permittedPaths.getAllValues().containsAll(Collections.singletonList("/get/test")));
-        verify(authorizedUrl).permitAll();
+        verify(registry.anyRequest()).permitAll();
 
         CorsConfigurer<HttpSecurity> corsConfigurer = mock(CorsConfigurer.class);
         corsCustomizer.getValue().customize(corsConfigurer);

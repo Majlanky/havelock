@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * Class for centralization of logic and its re-usability in {@link HavelockWebSecurity} or @link {@link HavelockSecurityConfiguration}
+ * Class for centralization of logic and its re-usability in @link {@link HavelockSecurityConfiguration}
  * about {@link HttpSecurity} customization. Main purpose it to set the http security based on Havelock annotations.
  *
  * @author Majlanky
@@ -59,10 +59,10 @@ public class HavelockHttpSecurityCustomizer {
     public boolean customize(@NonNull HttpSecurity http) throws Exception {
         Set<String> publicPaths = publicPathResolver.getPublicPaths();
         if (!publicPaths.isEmpty()) {
-            List<String> publicAntMatchers = new ArrayList<>(publicPaths);
+            List<String> publicMatchers = new ArrayList<>(publicPaths);
             publicChainCustomizer.customize(
-                    http.requestMatchers().antMatchers(publicAntMatchers.toArray(new String[0])).and()
-                            .authorizeRequests().anyRequest().permitAll().and()
+                    http.securityMatcher(publicMatchers.toArray(new String[0]))
+                            .authorizeHttpRequests(c -> c.anyRequest().permitAll())
                             .csrf(this::configureCsrf)
                             .cors(this::configureCors));
         }

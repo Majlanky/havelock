@@ -36,6 +36,10 @@ public class PublicPathEndpoint {
 
     private final PublicPathResolver publicPathResolver;
 
+    /**
+     * Actuator endpoint publicpaths
+     * @return set of public paths
+     */
     @ReadOperation
     public Set<String> publicPaths() {
         return publicPathResolver.getPublicPaths();
