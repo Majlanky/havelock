@@ -16,7 +16,6 @@
 
 package com.groocraft.havelock.security;
 
-import com.groocraft.havelock.annotation.EnableHavelock;
 import lombok.RequiredArgsConstructor;
 import org.springframework.core.env.Environment;
 import org.springframework.lang.NonNull;
@@ -33,8 +32,6 @@ public class HavelockWebSecurityCustomizer implements WebSecurityCustomizer {
 
     @NonNull
     private final Environment environment;
-    @NonNull
-    private final EnableHavelock enableHavelock;
 
     /**
      * Finds all swagger related paths based on configuration and default SpringDoc values and makes them ignored on {@link WebSecurity} level
@@ -45,15 +42,13 @@ public class HavelockWebSecurityCustomizer implements WebSecurityCustomizer {
      */
     @Override
     public void customize(@NonNull WebSecurity web) {
-        if (enableHavelock.exposeSpringDoc()) {
-            String staticSwaggerMatcher = "/swagger-ui";
-            String uiPath = environment.getProperty("springdoc.swagger-ui.path", "/swagger-ui.html");
-            String docsPath = environment.getProperty("springdoc.api-docs.path", "/v3/api-docs");
-            web.ignoring().requestMatchers(
-                    allStartingWith(staticSwaggerMatcher), allPathsStartingWith(staticSwaggerMatcher),
-                    allStartingWith(docsPath), allPathsStartingWith(docsPath),
-                    uiPath);
-        }
+        String staticSwaggerMatcher = "/swagger-ui";
+        String uiPath = environment.getProperty("springdoc.swagger-ui.path", "/swagger-ui.html");
+        String docsPath = environment.getProperty("springdoc.api-docs.path", "/v3/api-docs");
+        web.ignoring().requestMatchers(
+                allStartingWith(staticSwaggerMatcher), allPathsStartingWith(staticSwaggerMatcher),
+                allStartingWith(docsPath), allPathsStartingWith(docsPath),
+                uiPath);
     }
 
     /**

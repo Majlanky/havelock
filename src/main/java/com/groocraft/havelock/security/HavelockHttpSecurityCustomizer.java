@@ -17,9 +17,11 @@
 package com.groocraft.havelock.security;
 
 import com.groocraft.havelock.CorsConfigurationResolver;
+import com.groocraft.havelock.HavelockSetting;
 import com.groocraft.havelock.PublicPathResolver;
 import com.groocraft.havelock.annotation.EnableHavelock;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.lang.NonNull;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.CorsConfigurer;
@@ -44,9 +46,9 @@ public class HavelockHttpSecurityCustomizer {
     @NonNull
     private final CorsConfigurationResolver corsConfigurationResolver;
     @NonNull
-    private final HavelockPublicChainCustomizer publicChainCustomizer;
-    private final boolean cors;
-    private final boolean csrf;
+    private final ListableBeanFactory listableBeanFactory;
+    @NonNull
+    private final HavelockSetting havelockSetting;
 
     /**
      * Customizing the given {@code http} especially setting without security permitted, CORS and CSRF based on Havelock annotations and
@@ -60,8 +62,10 @@ public class HavelockHttpSecurityCustomizer {
         Set<String> publicPaths = publicPathResolver.getPublicPaths();
         if (!publicPaths.isEmpty()) {
             List<String> publicMatchers = new ArrayList<>(publicPaths);
-            publicChainCustomizer.customize(
-                    http.securityMatcher(publicMatchers.toArray(new String[0]))
+            listableBeanFactory.getBeanProvider(HavelockPublicChainCustomizer.class)
+                    .getIfAvailable(() -> h -> {
+                    })
+                    .customize(http.securityMatcher(publicMatchers.toArray(new String[0]))
                             .authorizeHttpRequests(c -> c.anyRequest().permitAll())
                             .csrf(this::configureCsrf)
                             .cors(this::configureCors));
@@ -75,7 +79,7 @@ public class HavelockHttpSecurityCustomizer {
      * @param csrfConfigurer must not be {@literal null}
      */
     private void configureCsrf(@NonNull CsrfConfigurer<HttpSecurity> csrfConfigurer) {
-        if (!csrf) {
+        if (!havelockSetting.csrf()) {
             csrfConfigurer.disable();
         }
     }
@@ -87,7 +91,7 @@ public class HavelockHttpSecurityCustomizer {
      * @param corsCustomizer must not be {@literal null}
      */
     private void configureCors(@NonNull CorsConfigurer<HttpSecurity> corsCustomizer) {
-        if (cors) {
+        if (havelockSetting.cors()) {
             corsConfigurationResolver.getConfigurationSource().ifPresent(corsCustomizer::configurationSource);
         } else {
             corsCustomizer.disable();

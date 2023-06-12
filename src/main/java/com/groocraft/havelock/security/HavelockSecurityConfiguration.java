@@ -34,8 +34,8 @@ import org.springframework.security.web.SecurityFilterChain;
 @RequiredArgsConstructor
 public class HavelockSecurityConfiguration {
 
+    @NonNull
     private final HavelockHttpSecurityCustomizer httpSecurityCustomizer;
-    private final WebSecurityCustomizer webSecurityCustomizer;
 
     /**
      * @param httpSecurity provided by Spring must not be {@literal null}
@@ -49,14 +49,6 @@ public class HavelockSecurityConfiguration {
             return httpSecurity.build();
         }
         return null;
-    }
-
-    /**
-     * @return customizer that is used by Spring to customize {@link org.springframework.security.config.annotation.web.builders.WebSecurity}
-     */
-    @Bean
-    public WebSecurityCustomizer havelockWebSecurityCustomizer() {
-        return webSecurityCustomizer;
     }
 
 }

@@ -39,7 +39,7 @@ public class CorsConfigurationResolver {
     @NonNull
     private final ListableBeanFactory listableBeanFactory;
     @NonNull
-    private final EnableHavelock enableHavelock;
+    private final HavelockSetting havelockSetting;
 
     /**
      * @return {@link CorsConfigurationSource} which is named the same as {@link EnableHavelock#corsConfigurationSource()} configuration, the only one
@@ -47,7 +47,7 @@ public class CorsConfigurationResolver {
      * {@link CorsConfigurationSource} in context, exception is thrown.
      */
     public Optional<CorsConfigurationSource> getConfigurationSource() {
-        String corsConfigurationSourceName = enableHavelock.corsConfigurationSource();
+        String corsConfigurationSourceName = havelockSetting.corsConfigurationSource();
         if (StringUtils.hasText(corsConfigurationSourceName)) {
             return Optional.of(listableBeanFactory.getBean(corsConfigurationSourceName, CorsConfigurationSource.class));
         } else {

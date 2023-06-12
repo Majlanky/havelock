@@ -17,28 +17,25 @@
 package com.groocraft.havelock.registration;
 
 import com.groocraft.havelock.CorsConfigurationResolver;
+import com.groocraft.havelock.HavelockSetting;
 import com.groocraft.havelock.PublicPathResolver;
 import com.groocraft.havelock.actuator.PublicPathEndpoint;
 import com.groocraft.havelock.annotation.EnableHavelock;
 import com.groocraft.havelock.security.HavelockHttpSecurityCustomizer;
-import com.groocraft.havelock.security.HavelockPublicChainCustomizer;
 import com.groocraft.havelock.security.HavelockSecurityConfiguration;
 import com.groocraft.havelock.security.HavelockWebSecurityCustomizer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
+import org.springframework.beans.factory.config.ConstructorArgumentValues;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
-import org.springframework.beans.factory.support.DefaultListableBeanFactory;
 import org.springframework.beans.factory.support.GenericBeanDefinition;
 import org.springframework.context.annotation.ImportBeanDefinitionRegistrar;
 import org.springframework.core.annotation.MergedAnnotation;
-import org.springframework.core.env.Environment;
 import org.springframework.core.type.AnnotationMetadata;
 import org.springframework.lang.NonNull;
 
-import java.util.function.Supplier;
+import java.util.List;
 
 /**
  * Registrar for registration of {@link HavelockSecurityConfiguration} with the configuration provided in {@link EnableHavelock} annotation.
@@ -49,17 +46,17 @@ import java.util.function.Supplier;
 @Slf4j
 public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
 
-    private static final String BEAN_NAME = "havelockWebSecurity";
+    private static final String SETTING_BEAN_NAME = "havelockSetting";
+    private static final String CONFIGURATION_BEAN_NAME = "havelockSecurityConfiguration";
+    private static final String RESOLVER_BEAN_NAME = "havelockPublicPathResolver";
+    private static final String CORS_RESOLVER_BEAN_NAME = "havelockCorsConfigurationResolver";
+
+    private static final String HTTP_CUSTOMIZER_BEAN_NAME = "havelockHttpSecurityCustomizer";
+    private static final String WEB_CUSTOMIZER_BEAN_NAME = "havelockWebSecurityCustomizer";
     private static final String ENDPOINT_NAME = "publicPathEndpoint";
 
-    @NonNull
-    private final BeanFactory beanFactory;
-    @NonNull
-    private final Environment environment;
-
     /**
-     * Registers {@link HavelockSecurityConfiguration} under {@link #BEAN_NAME} and {@link PublicPathEndpoint} (if configured)
-     * under {@link #ENDPOINT_NAME} into the given registry.
+     * Registers all necessary Havelock beans
      * {@inheritDoc}
      *
      * @param importingClassMetadata must contain {@link EnableHavelock} and must not be {@literal null}
@@ -70,60 +67,56 @@ public class HavelockRegistrar implements ImportBeanDefinitionRegistrar {
         EnableHavelock enableHavelock = importingClassMetadata.getAnnotations().get(EnableHavelock.class)
                 .synthesize(MergedAnnotation::isPresent)
                 .orElseThrow(() -> new IllegalArgumentException("Havelock registrar not invoked by EnableHavelock annotated class"));
-        ListableBeanFactory listableBeanFactory = makeListableIfNecessary(beanFactory);
-        PublicPathResolver publicPathResolver = new PublicPathResolver(listableBeanFactory);
-        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
-        HavelockWebSecurityCustomizer webSecurityCustomizer = new HavelockWebSecurityCustomizer(environment, enableHavelock);
-        HavelockHttpSecurityCustomizer httpSecurityCustomizer = new HavelockHttpSecurityCustomizer(publicPathResolver,
-                corsConfigurationResolver, getLazyHavelockPublicChainCustomizer(), enableHavelock.cors(), enableHavelock.csrf());
-        registry.registerBeanDefinition(BEAN_NAME, infrastructureBeanDefinition(HavelockSecurityConfiguration.class,
-                () -> new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer)));
+
+        registry.registerBeanDefinition(RESOLVER_BEAN_NAME, infrastructureBeanDefinition(PublicPathResolver.class));
+        registry.registerBeanDefinition(SETTING_BEAN_NAME, infrastructureBeanDefinition(HavelockSetting.class,
+                List.of(enableHavelock.cors(), enableHavelock.csrf(), enableHavelock.corsConfigurationSource())));
+
+        registry.registerBeanDefinition(CORS_RESOLVER_BEAN_NAME, infrastructureBeanDefinition(CorsConfigurationResolver.class));
+        registry.registerBeanDefinition(HTTP_CUSTOMIZER_BEAN_NAME, infrastructureBeanDefinition(HavelockHttpSecurityCustomizer.class));
+        registry.registerBeanDefinition(CONFIGURATION_BEAN_NAME, infrastructureBeanDefinition(HavelockSecurityConfiguration.class));
+
+        if (enableHavelock.exposeSpringDoc()) {
+            registry.registerBeanDefinition(WEB_CUSTOMIZER_BEAN_NAME, infrastructureBeanDefinition(HavelockWebSecurityCustomizer.class));
+        }
         if (enableHavelock.publicPathsEndpoint()) {
-            registry.registerBeanDefinition(ENDPOINT_NAME, infrastructureBeanDefinition(PublicPathEndpoint.class,
-                    () -> new PublicPathEndpoint(publicPathResolver)));
+            registry.registerBeanDefinition(ENDPOINT_NAME, infrastructureBeanDefinition(PublicPathEndpoint.class));
         }
         log.debug("Havelock registered");
     }
 
     /**
-     * @return {@link HavelockHttpSecurityCustomizer} that is initialized in the application context if any or mock customizer for non-null API.
+     * Helper to create bean definition of {@link BeanDefinition#ROLE_INFRASTRUCTURE} of the given class.
+     *
+     * @param clazz                of the bean. Must not be {@literal null}
+     * @param constructorArguments must not be {@literal null}
+     * @param <T>                  type of bean class
+     * @return definition with the given supplier, clazz and {@link BeanDefinition#ROLE_INFRASTRUCTURE}
      */
     @NonNull
-    private HavelockPublicChainCustomizer getLazyHavelockPublicChainCustomizer() {
-        return http -> beanFactory
-                .getBeanProvider(HavelockPublicChainCustomizer.class)
-                .getIfAvailable(() -> h -> {
-                })
-                .customize(http);
+    private <T> GenericBeanDefinition infrastructureBeanDefinition(@NonNull Class<T> clazz, @NonNull List<Object> constructorArguments) {
+        GenericBeanDefinition definition = infrastructureBeanDefinition(clazz);
+        ConstructorArgumentValues constructorArgumentValues = new ConstructorArgumentValues();
+        for (int i = 0; i < constructorArguments.size(); i++) {
+            constructorArgumentValues.addIndexedArgumentValue(i, constructorArguments.get(i));
+        }
+        definition.setConstructorArgumentValues(constructorArgumentValues);
+        return definition;
     }
 
     /**
      * Helper to create bean definition of {@link BeanDefinition#ROLE_INFRASTRUCTURE} of the given class.
      *
-     * @param clazz            of the bean. Must not be {@literal null}
-     * @param instanceSupplier must not be {@literal null}
-     * @param <T>              type of bean class
+     * @param clazz of the bean. Must not be {@literal null}
+     * @param <T>   type of bean class
      * @return definition with the given supplier, clazz and {@link BeanDefinition#ROLE_INFRASTRUCTURE}
      */
     @NonNull
-    private <T> GenericBeanDefinition infrastructureBeanDefinition(@NonNull Class<T> clazz, @NonNull Supplier<T> instanceSupplier) {
+    private <T> GenericBeanDefinition infrastructureBeanDefinition(@NonNull Class<T> clazz) {
         GenericBeanDefinition definition = new GenericBeanDefinition();
         definition.setBeanClass(clazz);
         definition.setRole(BeanDefinition.ROLE_INFRASTRUCTURE);
-        definition.setInstanceSupplier(instanceSupplier);
         return definition;
     }
 
-    /**
-     * @param beanFactory must not be {@literal null}
-     * @return the given {@code beanFactory} retyped to {@link ListableBeanFactory} if it is an instance of the class or new instance of the
-     * {@link ListableBeanFactory} which is using the given {@code beanFactory} as source.
-     */
-    @NonNull
-    private ListableBeanFactory makeListableIfNecessary(@NonNull BeanFactory beanFactory) {
-        if (ListableBeanFactory.class.isAssignableFrom(beanFactory.getClass())) {
-            return (ListableBeanFactory) beanFactory;
-        }
-        return new DefaultListableBeanFactory(beanFactory);
-    }
 }

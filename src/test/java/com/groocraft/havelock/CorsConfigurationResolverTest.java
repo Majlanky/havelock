@@ -16,7 +16,6 @@
 
 package com.groocraft.havelock;
 
-import com.groocraft.havelock.annotation.EnableHavelock;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -39,18 +38,19 @@ class CorsConfigurationResolverTest {
     @Mock
     ListableBeanFactory listableBeanFactory;
     @Mock
-    EnableHavelock enableHavelock;
-    @Mock
     CorsConfigurationSource corsConfigurationSource;
+
+    @Mock
+    HavelockSetting havelockSetting;
 
     @Test
     void testExistingDefaultCorsConfigurationSourceIsUsedByDefault() {
-        when(enableHavelock.corsConfigurationSource()).thenReturn(null);
+        when(havelockSetting.corsConfigurationSource()).thenReturn(null);
         Map<String, CorsConfigurationSource> corsConfigurationSources = new HashMap<>();
         corsConfigurationSources.put("corsConfigurationSource", corsConfigurationSource);
         when(listableBeanFactory.getBeansOfType(CorsConfigurationSource.class)).thenReturn(corsConfigurationSources);
 
-        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
+        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, havelockSetting);
 
         assertTrue(corsConfigurationResolver.getConfigurationSource().isPresent());
         assertSame(corsConfigurationSource, corsConfigurationResolver.getConfigurationSource().get());
@@ -58,33 +58,33 @@ class CorsConfigurationResolverTest {
 
     @Test
     void testEmptyOptionalIsReturnedWhenNoCorsConfigurationSourceFound() {
-        when(enableHavelock.corsConfigurationSource()).thenReturn(null);
+        when(havelockSetting.corsConfigurationSource()).thenReturn(null);
         when(listableBeanFactory.getBeansOfType(CorsConfigurationSource.class)).thenReturn(new HashMap<>());
 
-        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
+        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, havelockSetting);
 
         assertFalse(corsConfigurationResolver.getConfigurationSource().isPresent());
     }
 
     @Test
     void testExceptionThrownWhenMoreCorsConfigurationSourceFound() {
-        when(enableHavelock.corsConfigurationSource()).thenReturn(null);
+        when(havelockSetting.corsConfigurationSource()).thenReturn(null);
         Map<String, CorsConfigurationSource> corsConfigurationSources = new HashMap<>();
         corsConfigurationSources.put("corsConfigurationSource", corsConfigurationSource);
         corsConfigurationSources.put("corsConfigurationSource2", corsConfigurationSource);
         corsConfigurationSources.put("corsConfigurationSource3", corsConfigurationSource);
         when(listableBeanFactory.getBeansOfType(CorsConfigurationSource.class)).thenReturn(corsConfigurationSources);
 
-        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
+        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, havelockSetting);
         assertThrows(IllegalArgumentException.class, corsConfigurationResolver::getConfigurationSource);
     }
 
     @Test
     void testConfiguredCorsConfigurationSourceIsUsedWhenExists() {
-        when(enableHavelock.corsConfigurationSource()).thenReturn("corsConfigurationSource");
+        when(havelockSetting.corsConfigurationSource()).thenReturn("corsConfigurationSource");
         when(listableBeanFactory.getBean("corsConfigurationSource", CorsConfigurationSource.class)).thenReturn(corsConfigurationSource);
 
-        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, enableHavelock);
+        CorsConfigurationResolver corsConfigurationResolver = new CorsConfigurationResolver(listableBeanFactory, havelockSetting);
 
         assertTrue(corsConfigurationResolver.getConfigurationSource().isPresent());
         assertSame(corsConfigurationSource, corsConfigurationResolver.getConfigurationSource().get());

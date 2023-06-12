@@ -21,11 +21,12 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityCustomizer;
 import org.springframework.security.web.DefaultSecurityFilterChain;
 
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -33,8 +34,6 @@ class HavelockSecurityConfigurationTest {
 
     @Mock
     HavelockHttpSecurityCustomizer httpSecurityCustomizer;
-    @Mock
-    WebSecurityCustomizer webSecurityCustomizer;
     @Mock
     HttpSecurity httpSecurity;
     @Mock
@@ -47,22 +46,21 @@ class HavelockSecurityConfigurationTest {
         when(httpSecurity.build()).thenReturn(defaultSecurityFilterChain);
         when(httpSecurityCustomizer.customize(httpSecurity)).thenReturn(true);
 
-        havelockSecurityConfiguration = new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer);
+        havelockSecurityConfiguration = new HavelockSecurityConfiguration(httpSecurityCustomizer);
 
-        assertSame(webSecurityCustomizer, havelockSecurityConfiguration.havelockWebSecurityCustomizer());
         assertSame(defaultSecurityFilterChain, havelockSecurityConfiguration.havelockSecurityFilterChain(httpSecurity));
 
     }
 
     @Test
-    void testCustomizersAreNotUsedWhenNoCustomizationWasDone() throws Exception {
+    void testNoSecurityChainIsCreatedWhenNoPublicPaths() throws Exception {
         when(httpSecurityCustomizer.customize(httpSecurity)).thenReturn(false);
 
-        havelockSecurityConfiguration = new HavelockSecurityConfiguration(httpSecurityCustomizer, webSecurityCustomizer);
+        havelockSecurityConfiguration = new HavelockSecurityConfiguration(httpSecurityCustomizer);
 
-        assertSame(webSecurityCustomizer, havelockSecurityConfiguration.havelockWebSecurityCustomizer());
+
         assertNull(havelockSecurityConfiguration.havelockSecurityFilterChain(httpSecurity));
-
+        verify(httpSecurity, never()).build();
     }
 
 }

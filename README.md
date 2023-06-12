@@ -1,4 +1,3 @@
-TODO fix readme to match spring boot 3+
 # Havelock
 [![Build Status](https://travis-ci.com/Majlanky/havelock.svg?branch=master)](https://travis-ci.com/Majlanky/havelock)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=com.groocraft%3Ahavelock&metric=coverage)](https://sonarcloud.io/dashboard?id=com.groocraft%3Ahavelock)
@@ -6,7 +5,9 @@ TODO fix readme to match spring boot 3+
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=com.groocraft%3Ahavelock&metric=security_rating)](https://sonarcloud.io/dashboard?id=com.groocraft%3Ahavelock)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=com.groocraft%3Ahavelock&metric=reliability_rating)](https://sonarcloud.io/dashboard?id=com.groocraft%3Ahavelock)
 [![Known Vulnerabilities](https://snyk.io/test/github/majlanky/havelock/badge.svg)](https://snyk.io/test/github/majlanky/havelock)  
-![](https://img.shields.io/badge/compatibility-JDK8%20and%20higher-purple)
+![](https://img.shields.io/badge/compatibility-JDK17%20and%20higher-purple)
+![](https://img.shields.io/badge/compatibility-Native%20builds-purple)
+![](https://img.shields.io/badge/compatibility-Spring%20Boot%203+-purple)
 
 Havelock project started in 2022. Basic idea and motivation was to invert and simplify logic of Spring security configuration regarding public endpoints.
 When security is used especially with other libraries as SpringDoc, it is very non-centralized to make an endpoint public. First things first endpoint must be 
@@ -15,6 +16,8 @@ security config. One thing wrong and everything goes wrong. The other thing is r
 
 From version 1.3.0 Havelock can provide actuator endpoint `publicpaths` that provides list of all public path. This feature is disabled by default. See
 [wiki](https://github.com/Majlanky/havelock/wiki) for more information...
+
+From version 2.0.0 Havelock is ready for JDK17 and Spring Boot 3+. In the version 2.0.0 deprecated WebSecurityConfigurerAdapter was removed!
 
 Artifacts releases are available on maven central (and on pages indexing central):
 * [central](https://repo1.maven.org/maven2/com/groocraft/havelock/)
@@ -46,18 +49,8 @@ added support for both and what is used is determined by configuration of `@Enab
 cases. For backward compatibility of the previous Havelock version, the SecurityFilterChain approach must be explicitly turned on even it is by 
 Spring preferred way.
 
-When you have Havelock on you classpath the first thing that must be done is to place @EnableHavelock on Application class of Spring Boot or one of 
-Configuration classes. 
-For example like this if you are using WebSecurityConfigurerAdapter:
-```java
-@Configuration
-@EnableWebSecurity
-@EnableHavelock
-public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
-    ...
-}
-```
-or like this if you are using SecurityFilterChain:
+When you have Havelock on you classpath the first thing that must be done is to place @EnableHavelock on Application class of Spring Boot or 
+Configuration class for example when you are using SecurityFilterChain:
 ```java
 @Configuration
 @EnableWebSecurity

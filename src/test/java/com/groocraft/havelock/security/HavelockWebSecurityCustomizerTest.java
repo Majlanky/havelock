@@ -16,7 +16,6 @@
 
 package com.groocraft.havelock.security;
 
-import com.groocraft.havelock.annotation.EnableHavelock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -30,10 +29,8 @@ import org.springframework.security.config.annotation.web.builders.WebSecurity;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -43,8 +40,6 @@ class HavelockWebSecurityCustomizerTest {
 
     @Mock
     Environment environment;
-    @Mock
-    EnableHavelock enableHavelock;
     @Mock(answer = Answers.RETURNS_DEEP_STUBS)
     WebSecurity webSecurity;
 
@@ -52,13 +47,11 @@ class HavelockWebSecurityCustomizerTest {
 
     @BeforeEach
     void setUp() {
-        webSecurityCustomizer = new HavelockWebSecurityCustomizer(environment, enableHavelock);
+        webSecurityCustomizer = new HavelockWebSecurityCustomizer(environment);
     }
 
     @Test
     void testSpringDocsAreExposedWhenConfiguredWithoutSwaggerConfig() {
-        when(enableHavelock.exposeSpringDoc()).thenReturn(true);
-
         when(environment.getProperty(anyString(), anyString())).thenAnswer(i -> i.getArgument(1));
 
         webSecurityCustomizer.customize(webSecurity);
@@ -72,8 +65,6 @@ class HavelockWebSecurityCustomizerTest {
 
     @Test
     void testSpringDocsAreExposedWhenConfiguredWithSwaggerConfig() {
-        when(enableHavelock.exposeSpringDoc()).thenReturn(true);
-
         String configuredSwaggerUiPath = "/hello.html";
         String configuredDocsPath = "/v3/docs";
 
@@ -88,15 +79,5 @@ class HavelockWebSecurityCustomizerTest {
         assertTrue(Arrays.asList(ignoredPathsCaptor.getValue())
                 .containsAll(Arrays.asList(configuredSwaggerUiPath, "/swagger-ui**", "/swagger-ui/**", configuredDocsPath + "**", configuredDocsPath + "/**")));
     }
-
-    @Test
-    void testSpringDocsAreNotExposedWhenConfiguredNotTo() {
-        when(enableHavelock.exposeSpringDoc()).thenReturn(false);
-
-        webSecurityCustomizer.customize(webSecurity);
-
-        verify(webSecurity.ignoring(), never()).requestMatchers(any(String.class));
-    }
-
 
 }
